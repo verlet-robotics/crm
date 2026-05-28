@@ -264,3 +264,15 @@ LABEL org.opencontainers.image.source=https://github.com/twentyhq/twenty
 LABEL org.opencontainers.image.description="All-in-one Twenty image for local development and SDK usage. Includes PostgreSQL, Redis, server, and worker."
 
 ENTRYPOINT ["/init"]
+
+
+# ===========================================================================
+# Target: twenty-railway (DEFAULT build target for Railway deploys)
+#   Railway always builds the LAST stage of a multi-stage Dockerfile and has no
+#   target-stage setting. This trivial final stage re-points to `twenty` (server
+#   + frontend, port 3000) so Railway builds the production image instead of the
+#   all-in-one `twenty-app-dev` dev image (port 2020, bundled Postgres) above.
+#   Local `docker build --target <stage>` callers are unaffected.
+# ===========================================================================
+
+FROM twenty AS twenty-railway
