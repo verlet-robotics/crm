@@ -208,6 +208,20 @@
         "command": "doppler run --project crm --config dev_verlet -- tsx src/queue/enqueue-cron.ts"
       }
     },
+    "trigger:server": {
+      "executor": "nx:run-commands",
+      "options": {
+        "cwd": "{projectRoot}",
+        "command": "doppler run --project crm --config dev_verlet -- tsx src/server/trigger-server.ts"
+      }
+    },
+    "serve": {
+      "executor": "nx:run-commands",
+      "options": {
+        "cwd": "{projectRoot}",
+        "command": "doppler run --project crm --config dev_verlet -- tsx src/server/serve-all.ts"
+      }
+    },
     "typecheck": {
       "executor": "nx:run-commands",
       "options": {

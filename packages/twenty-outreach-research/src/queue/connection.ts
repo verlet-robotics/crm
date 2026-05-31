@@ -26,6 +26,7 @@ export const redis = (): Redis => {
 // separator); use `.` as the namespace separator instead.
 export const Q = {
   research: 'outreach.research',
+  company: 'outreach.company',
   gmailPoll: 'outreach.gmail-poll',
   replyWatch: 'outreach.reply-watch',
   discover: 'outreach.discover',

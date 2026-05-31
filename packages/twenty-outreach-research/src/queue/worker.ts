@@ -14,6 +14,7 @@ import { type Job, Worker } from 'bullmq';
 
 import { findPeopleByResearchStatus } from '../lib/twenty-client.js';
 import { runForPerson } from '../run-for-person.js';
+import { runForCompany } from '../run-for-company.js';
 import { gmailPollOnce } from '../send/gmail-poll.js';
 import { replyWatchOnce } from '../send/reply-watcher.js';
 import { discoverFromApollo } from '../discover/discover-apollo.js';
@@ -23,6 +24,7 @@ import { aggregateInstitutions } from '../discover/institutions-aggregate.js';
 
 import { Q, redis } from './connection.js';
 import {
+  type CompanyResearchJob,
   type DiscoverJob,
   type GmailPollJob,
   type ReplyWatchJob,
@@ -47,6 +49,18 @@ const researchWorker = new Worker<ResearchJob>(
   { connection: redis(), concurrency: 2 },
 );
 researchWorker.on('failed', onFailed(Q.research));
+
+// Company research is heavier (org brief + deep per-person research on the
+// technical picks), so keep concurrency at 1 to bound LLM spend.
+const companyWorker = new Worker<CompanyResearchJob>(
+  Q.company,
+  async (job) => {
+    log(Q.company, job, `company research companyId=${job.data.companyId}`);
+    await runForCompany(job.data.companyId);
+  },
+  { connection: redis(), concurrency: 1 },
+);
+companyWorker.on('failed', onFailed(Q.company));
 
 const gmailWorker = new Worker<GmailPollJob>(
   Q.gmailPoll,
@@ -119,6 +133,7 @@ const shutdown = async (signal: string): Promise<void> => {
   console.log(`[worker] received ${signal}, draining…`);
   await Promise.all([
     researchWorker.close(),
+    companyWorker.close(),
     gmailWorker.close(),
     replyWorker.close(),
     discoverWorker.close(),

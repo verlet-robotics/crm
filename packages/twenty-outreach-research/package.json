@@ -35,7 +35,9 @@
     "send:reply-watch": "tsx src/send/reply-watcher.ts",
     "queue:worker": "tsx src/queue/worker.ts",
     "queue:enqueue:research": "tsx src/queue/enqueue-research.ts",
-    "queue:enqueue:cron": "tsx src/queue/enqueue-cron.ts"
+    "queue:enqueue:cron": "tsx src/queue/enqueue-cron.ts",
+    "trigger:server": "tsx src/server/trigger-server.ts",
+    "serve": "tsx src/server/serve-all.ts"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.32.1",

@@ -155,6 +155,82 @@ doppler run --project crm --config dev_verlet -- \
   npx tsx src/lib/inspect-person.ts <uuid>
 ```
 
+## Trigger buttons in Twenty UI
+
+Research can be kicked off from **buttons on Person and Company records** in the
+Twenty UI — no need to drop to the terminal. This works **without forking
+Twenty's code**: it uses Twenty's native *Workflows* feature pointed at this
+package's HTTP trigger server.
+
+### Architecture
+
+```
+[Person/Company record button]                (Twenty UI)
+        │  manual-trigger workflow
+        ▼
+[HTTP Request action] ──POST──▶ [trigger server] ──enqueue──▶ [BullMQ/Redis]
+                                  /triggers/*                       │
+                                                                    ▼
+                                                          [queue:worker] runs
+                                                          runForPerson / runForCompany
+```
+
+The button returns instantly (the server only enqueues); the worker does the
+slow LLM research out-of-band and writes results back to the CRM — same code
+paths as `run:person` / `run-for-company`.
+
+### 1. Run the trigger server + worker
+
+Endpoints (bearer-token auth):
+
+- `POST /triggers/research-person`  body `{ "personId": "<uuid>" }`
+- `POST /triggers/research-company` body `{ "companyId": "<uuid>" }`
+- `GET /health` (unauthenticated — for uptime checks)
+
+Set `OUTREACH_TRIGGER_TOKEN` (generate with `openssl rand -hex 32`). Then either:
+
+- **One process:** `yarn nx run twenty-outreach-research:serve` — runs the
+  trigger server *and* the queue worker together. Simplest.
+- **Two processes (recommended at scale):**
+  `yarn nx run twenty-outreach-research:trigger:server` (web) +
+  `yarn nx run twenty-outreach-research:queue:worker` (worker), sharing the same
+  `REDIS_URL`.
+
+### 2. Deploy on Railway
+
+Point a Railway service at this package with start command
+`yarn nx run twenty-outreach-research:serve` (single service) — or two services
+using `trigger:server` and `queue:worker`. Provide the same env vars Doppler
+supplies locally, plus `OUTREACH_TRIGGER_TOKEN`. Railway injects `PORT`; the
+server reads it automatically. Note the public URL (e.g.
+`https://outreach-trigger.up.railway.app`).
+
+### 3. Create the buttons in Twenty (no code)
+
+For each button, in the Twenty workspace UI:
+
+1. **Settings → Workflows → New workflow.**
+2. **Trigger:** **Manual trigger**, availability **single record**, object type
+   **Person** (or **Company**). This makes it appear as a button on that
+   record's page and in the command menu. Label it e.g. *"Research this Person"*
+   and pick an icon.
+3. **Add action → HTTP Request:**
+   - **Method:** `POST`
+   - **URL:** `https://<your-railway-url>/triggers/research-person`
+     (or `/triggers/research-company`)
+   - **Headers:** `Authorization: Bearer <OUTREACH_TRIGGER_TOKEN>` and
+     `Content-Type: application/json`
+   - **Body:** `{ "personId": "{{trigger.record.id}}" }`
+     (Company: `{ "companyId": "{{trigger.record.id}}" }`) — use the workflow
+     variable picker to insert the record id.
+4. **Publish/activate** the workflow.
+
+Repeat for the Company button. Clicking now enqueues research; watch the
+`queue:worker` logs to see it run. Enqueues are idempotent per record id, so a
+double-click won't double-research the same record. The server returns `400` if
+the `{{trigger.record.id}}` variable didn't render — handy for catching a
+mis-wired body in Twenty's workflow run history.
+
 ## Review loop (in Twenty UI)
 
 1. Filter People by `researchStatus = DRAFTED`. The top-angle headline is
