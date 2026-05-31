@@ -1,0 +1,60 @@
+{
+  "name": "twenty-outreach-research",
+  "version": "0.1.0",
+  "description": "Deep research + outreach drafting pipeline for Verlet GTM. Reads target list, produces research briefs and email drafts, writes back to Twenty CRM.",
+  "private": true,
+  "type": "module",
+  "engines": {
+    "node": "^24.5.0",
+    "yarn": "^4.0.2"
+  },
+  "scripts": {
+    "setup:install-fields": "tsx src/setup/install-custom-fields.ts",
+    "research:synth": "tsx src/research/synthesize-brief.ts",
+    "draft:run": "tsx src/draft/run.ts",
+    "smoke:client": "tsx src/lib/twenty-client.smoke.ts",
+    "smoke:pipeline": "tsx src/draft/run.ts",
+    "smoke:gather": "tsx src/research/gather-inputs.smoke.ts",
+    "stage1:scan": "tsx src/discover/institutions-aggregate.ts",
+    "stage1:scan:arxiv": "tsx src/discover/scan-arxiv-affiliations.ts",
+    "stage1:scan:github": "tsx src/discover/scan-github-orgs.ts",
+    "stage1:scan:funding": "tsx src/discover/scan-funding-news.ts",
+    "stage1:report:unmatched": "tsx src/discover/report-unmatched.ts",
+    "stage2:contacts": "tsx src/contacts/find-contacts.ts",
+    "stage2:legacy-arxiv": "tsx src/discover/discover-arxiv.ts",
+    "stage2:legacy-similar": "tsx src/discover/discover-similar.ts",
+    "stage2:legacy-apollo": "tsx src/discover/discover-apollo.ts",
+    "stage2:legacy-github": "tsx src/discover/discover-github.ts",
+    "stage2:legacy-citations": "tsx src/discover/discover-citations.ts",
+    "stage2:legacy-coauthors": "tsx src/discover/discover-coauthors.ts",
+    "stage2:legacy-all": "tsx src/discover/run-discovery.ts",
+    "stage3:person": "tsx src/run-for-person.ts",
+    "stage3:pending": "tsx src/run-pending.ts",
+    "auth:gmail": "tsx src/send/google-auth.ts",
+    "send:gmail-poll": "tsx src/send/gmail-poll.ts",
+    "send:reply-watch": "tsx src/send/reply-watcher.ts",
+    "queue:worker": "tsx src/queue/worker.ts",
+    "queue:enqueue:research": "tsx src/queue/enqueue-research.ts",
+    "queue:enqueue:cron": "tsx src/queue/enqueue-cron.ts"
+  },
+  "dependencies": {
+    "@anthropic-ai/sdk": "^0.32.1",
+    "@ai-sdk/anthropic": "^1.0.0",
+    "@ai-sdk/openai": "^1.0.0",
+    "@ai-sdk/openai-compatible": "^0.1.0",
+    "ai": "^4.0.0",
+    "bullmq": "^5.13.0",
+    "dotenv": "^16.4.5",
+    "fast-xml-parser": "^4.5.0",
+    "googleapis": "^144.0.0",
+    "ioredis": "^5.4.0",
+    "twenty-client-sdk": "workspace:*",
+    "twenty-shared": "workspace:*",
+    "zod": "^4.1.11"
+  },
+  "devDependencies": {
+    "@types/node": "^22.10.0",
+    "tsx": "^4.19.0",
+    "typescript": "^5.6.0"
+  }
+}

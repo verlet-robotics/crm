@@ -1,0 +1,219 @@
+{
+  "name": "twenty-outreach-research",
+  "$schema": "../../node_modules/nx/schemas/project-schema.json",
+  "sourceRoot": "packages/twenty-outreach-research/src",
+  "projectType": "application",
+  "tags": ["scope:outreach"],
+  "targets": {
+    "setup:install-fields": {
+      "executor": "nx:run-commands",
+      "options": {
+        "cwd": "{projectRoot}",
+        "command": "doppler run --project crm --config dev_verlet -- tsx src/setup/install-custom-fields.ts"
+      }
+    },
+    "setup:install-company-views": {
+      "executor": "nx:run-commands",
+      "options": {
+        "cwd": "{projectRoot}",
+        "command": "doppler run --project crm --config dev_verlet -- tsx src/setup/install-company-views.ts"
+      }
+    },
+    "smoke:client": {
+      "executor": "nx:run-commands",
+      "options": {
+        "cwd": "{projectRoot}",
+        "command": "doppler run --project crm --config dev_verlet -- tsx src/lib/twenty-client.smoke.ts"
+      }
+    },
+    "smoke:gather": {
+      "executor": "nx:run-commands",
+      "options": {
+        "cwd": "{projectRoot}",
+        "command": "doppler run --project crm --config dev_verlet -- tsx src/research/gather-inputs.smoke.ts"
+      }
+    },
+    "smoke:pipeline": {
+      "executor": "nx:run-commands",
+      "options": {
+        "cwd": "{projectRoot}",
+        "command": "doppler run --project crm --config dev_verlet -- tsx src/draft/run.ts"
+      }
+    },
+    "stage1:scan": {
+      "executor": "nx:run-commands",
+      "options": {
+        "cwd": "{projectRoot}",
+        "command": "doppler run --project crm --config dev_verlet -- tsx src/discover/institutions-aggregate.ts"
+      }
+    },
+    "stage1:scan:arxiv": {
+      "executor": "nx:run-commands",
+      "options": {
+        "cwd": "{projectRoot}",
+        "command": "doppler run --project crm --config dev_verlet -- tsx src/discover/scan-arxiv-affiliations.ts"
+      }
+    },
+    "stage1:scan:github": {
+      "executor": "nx:run-commands",
+      "options": {
+        "cwd": "{projectRoot}",
+        "command": "doppler run --project crm --config dev_verlet -- tsx src/discover/scan-github-orgs.ts"
+      }
+    },
+    "stage1:scan:funding": {
+      "executor": "nx:run-commands",
+      "options": {
+        "cwd": "{projectRoot}",
+        "command": "doppler run --project crm --config dev_verlet -- tsx src/discover/scan-funding-news.ts"
+      }
+    },
+    "stage1:report:unmatched": {
+      "executor": "nx:run-commands",
+      "options": {
+        "cwd": "{projectRoot}",
+        "command": "tsx src/discover/report-unmatched.ts"
+      }
+    },
+    "stage2:contacts": {
+      "executor": "nx:run-commands",
+      "options": {
+        "cwd": "{projectRoot}",
+        "command": "doppler run --project crm --config dev_verlet -- tsx src/contacts/find-contacts.ts"
+      }
+    },
+    "stage2:legacy-arxiv": {
+      "executor": "nx:run-commands",
+      "options": {
+        "cwd": "{projectRoot}",
+        "command": "doppler run --project crm --config dev_verlet -- tsx src/discover/discover-arxiv.ts"
+      }
+    },
+    "stage2:legacy-similar": {
+      "executor": "nx:run-commands",
+      "options": {
+        "cwd": "{projectRoot}",
+        "command": "doppler run --project crm --config dev_verlet -- tsx src/discover/discover-similar.ts"
+      }
+    },
+    "stage2:legacy-apollo": {
+      "executor": "nx:run-commands",
+      "options": {
+        "cwd": "{projectRoot}",
+        "command": "doppler run --project crm --config dev_verlet -- tsx src/discover/discover-apollo.ts"
+      }
+    },
+    "stage2:legacy-github": {
+      "executor": "nx:run-commands",
+      "options": {
+        "cwd": "{projectRoot}",
+        "command": "doppler run --project crm --config dev_verlet -- tsx src/discover/discover-github.ts"
+      }
+    },
+    "stage2:legacy-citations": {
+      "executor": "nx:run-commands",
+      "options": {
+        "cwd": "{projectRoot}",
+        "command": "doppler run --project crm --config dev_verlet -- tsx src/discover/discover-citations.ts"
+      }
+    },
+    "stage2:legacy-coauthors": {
+      "executor": "nx:run-commands",
+      "options": {
+        "cwd": "{projectRoot}",
+        "command": "doppler run --project crm --config dev_verlet -- tsx src/discover/discover-coauthors.ts"
+      }
+    },
+    "stage2:legacy-all": {
+      "executor": "nx:run-commands",
+      "options": {
+        "cwd": "{projectRoot}",
+        "command": "doppler run --project crm --config dev_verlet -- tsx src/discover/run-discovery.ts"
+      }
+    },
+    "qualify:contacts": {
+      "executor": "nx:run-commands",
+      "options": {
+        "cwd": "{projectRoot}",
+        "command": "doppler run --project crm --config dev_verlet -- tsx src/qualify/qualify-contacts.ts"
+      }
+    },
+    "qualify:backfill-titles": {
+      "executor": "nx:run-commands",
+      "options": {
+        "cwd": "{projectRoot}",
+        "command": "doppler run --project crm --config dev_verlet -- tsx src/qualify/backfill-titles.ts"
+      }
+    },
+    "smoke:qualify": {
+      "executor": "nx:run-commands",
+      "options": {
+        "cwd": "{projectRoot}",
+        "command": "tsx src/qualify/classify-fit.smoke.ts"
+      }
+    },
+    "stage3:person": {
+      "executor": "nx:run-commands",
+      "options": {
+        "cwd": "{projectRoot}",
+        "command": "doppler run --project crm --config dev_verlet -- tsx src/run-for-person.ts"
+      }
+    },
+    "stage3:pending": {
+      "executor": "nx:run-commands",
+      "options": {
+        "cwd": "{projectRoot}",
+        "command": "doppler run --project crm --config dev_verlet -- tsx src/run-pending.ts"
+      }
+    },
+    "auth:gmail": {
+      "executor": "nx:run-commands",
+      "options": {
+        "cwd": "{projectRoot}",
+        "command": "doppler run --project crm --config dev_verlet -- tsx src/send/google-auth.ts"
+      }
+    },
+    "send:gmail-poll": {
+      "executor": "nx:run-commands",
+      "options": {
+        "cwd": "{projectRoot}",
+        "command": "doppler run --project crm --config dev_verlet -- tsx src/send/gmail-poll.ts"
+      }
+    },
+    "send:reply-watch": {
+      "executor": "nx:run-commands",
+      "options": {
+        "cwd": "{projectRoot}",
+        "command": "doppler run --project crm --config dev_verlet -- tsx src/send/reply-watcher.ts"
+      }
+    },
+    "queue:worker": {
+      "executor": "nx:run-commands",
+      "options": {
+        "cwd": "{projectRoot}",
+        "command": "doppler run --project crm --config dev_verlet -- tsx src/queue/worker.ts"
+      }
+    },
+    "queue:enqueue:research": {
+      "executor": "nx:run-commands",
+      "options": {
+        "cwd": "{projectRoot}",
+        "command": "doppler run --project crm --config dev_verlet -- tsx src/queue/enqueue-research.ts"
+      }
+    },
+    "queue:enqueue:cron": {
+      "executor": "nx:run-commands",
+      "options": {
+        "cwd": "{projectRoot}",
+        "command": "doppler run --project crm --config dev_verlet -- tsx src/queue/enqueue-cron.ts"
+      }
+    },
+    "typecheck": {
+      "executor": "nx:run-commands",
+      "options": {
+        "cwd": "{projectRoot}",
+        "command": "tsc -p tsconfig.json --noEmit"
+      }
+    }
+  }
+}

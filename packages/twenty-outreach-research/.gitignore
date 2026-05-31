@@ -1,0 +1,13 @@
+# Dependencies
+node_modules/
+
+# Build output
+dist/
+
+# Secrets & local config
+.env
+.google-token.json
+
+# Runtime artifacts (machine-generated)
+.firecrawl/
+.state/
