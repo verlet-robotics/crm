@@ -157,35 +157,44 @@ doppler run --project crm --config dev_verlet -- \
 
 ## Trigger buttons in Twenty UI
 
-Research can be kicked off from **buttons on Person and Company records** in the
-Twenty UI — no need to drop to the terminal. This works **without forking
-Twenty's code**: it uses Twenty's native *Workflows* feature pointed at this
-package's HTTP trigger server.
+Research can be kicked off from **buttons in the Twenty UI** — no need to drop
+to the terminal. Two flavours:
+
+- **Per-record buttons** on Person and Company pages — research *this* record.
+- **Global buttons** in the command menu — run the whole pending backlog, or
+  start a discovery scan. Not tied to any record.
+
+This works **without forking Twenty's code**: it uses Twenty's native
+*Workflows* feature pointed at this package's HTTP trigger server.
 
 ### Architecture
 
 ```
-[Person/Company record button]                (Twenty UI)
+[record button]  /  [global command-menu button]      (Twenty UI)
         │  manual-trigger workflow
         ▼
 [HTTP Request action] ──POST──▶ [trigger server] ──enqueue──▶ [BullMQ/Redis]
                                   /triggers/*                       │
                                                                     ▼
                                                           [queue:worker] runs
-                                                          runForPerson / runForCompany
+                                              runForPerson / runForCompany / scan
 ```
 
 The button returns instantly (the server only enqueues); the worker does the
 slow LLM research out-of-band and writes results back to the CRM — same code
-paths as `run:person` / `run-for-company`.
+paths as `run:person` / `run-for-company` / `run-pending` / `stage1:scan`.
 
 ### 1. Run the trigger server + worker
 
-Endpoints (bearer-token auth):
+Endpoints (bearer-token auth; `GET /health` is unauthenticated for uptime checks):
 
-- `POST /triggers/research-person`  body `{ "personId": "<uuid>" }`
-- `POST /triggers/research-company` body `{ "companyId": "<uuid>" }`
-- `GET /health` (unauthenticated — for uptime checks)
+| Endpoint | Body | Effect |
+|---|---|---|
+| `POST /triggers/research-person`  | `{ "personId": "<uuid>" }`  | research one Person |
+| `POST /triggers/research-company` | `{ "companyId": "<uuid>" }` | research one Company |
+| `POST /triggers/run-pending`      | `{ "limit": 100 }` (optional) | enqueue the NEEDS_RESEARCH backlog (fit-gated) |
+| `POST /triggers/discovery-scan`   | `{}` | start the Stage 1 institution/discovery scan |
+| `GET  /health`                    | — | liveness probe |
 
 Set `OUTREACH_TRIGGER_TOKEN` (generate with `openssl rand -hex 32`). Then either:
 
@@ -230,6 +239,23 @@ Repeat for the Company button. Clicking now enqueues research; watch the
 double-click won't double-research the same record. The server returns `400` if
 the `{{trigger.record.id}}` variable didn't render — handy for catching a
 mis-wired body in Twenty's workflow run history.
+
+### 4. Add the global buttons (no record)
+
+Same recipe, but set the manual trigger's availability to **global** (no object
+type) so it shows in the command menu rather than on a record page. No
+`{{trigger.record.id}}` in the body since there's no record:
+
+- **"Run pending research"** → `POST .../triggers/run-pending`, body `{}` (or
+  `{ "limit": 50 }` to cap how many backlog People get enqueued; default 100,
+  max 500). The server applies the same investor/poor-fit gate as
+  `enqueue-research`, so only eligible People are queued.
+- **"Run discovery scan"** → `POST .../triggers/discovery-scan`, body `{}`.
+  Kicks off the Stage 1 institution scan (arXiv + GitHub + funding). The
+  discover worker runs one scan at a time; overlapping clicks queue up rather
+  than run concurrently.
+
+Both still need the `Authorization: Bearer <OUTREACH_TRIGGER_TOKEN>` header.
 
 ## Review loop (in Twenty UI)
 

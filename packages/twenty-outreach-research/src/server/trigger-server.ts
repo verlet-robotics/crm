@@ -17,7 +17,9 @@ import 'dotenv/config';
 import { createServer, type IncomingMessage, type ServerResponse } from 'node:http';
 import { randomUUID } from 'node:crypto';
 
-import { companyResearchQueue, researchQueue } from '../queue/queues.js';
+import { companyResearchQueue, discoverQueue, researchQueue } from '../queue/queues.js';
+import { findPeopleByResearchStatus } from '../lib/twenty-client.js';
+import { researchGate } from '../qualify/should-research.js';
 
 const PORT = Number(process.env.OUTREACH_TRIGGER_PORT ?? process.env.PORT ?? 8787);
 const TOKEN = process.env.OUTREACH_TRIGGER_TOKEN;
@@ -66,7 +68,11 @@ const handle = async (req: IncomingMessage, res: ServerResponse): Promise<void> 
   const method = req.method ?? 'GET';
 
   if (method === 'GET' && (url === '/health' || url === '/')) {
-    json(res, 200, { ok: true, service: 'outreach-trigger', queues: ['research', 'company'] });
+    json(res, 200, {
+      ok: true,
+      service: 'outreach-trigger',
+      queues: ['research', 'company', 'discover'],
+    });
     return;
   }
 
@@ -111,6 +117,43 @@ const handle = async (req: IncomingMessage, res: ServerResponse): Promise<void> 
     const job = await companyResearchQueue.add('company', { companyId }, { jobId: companyId });
     console.log(`[trigger-server] enqueued company companyId=${companyId} job=${job.id}`);
     json(res, 202, { ok: true, queued: 'company', companyId, jobId: job.id });
+    return;
+  }
+
+  // Global: sweep the NEEDS_RESEARCH backlog and enqueue each gated Person.
+  // Record-less — wired to a global manual-trigger workflow / command-menu item.
+  if (url === '/triggers/run-pending') {
+    const rawLimit = Number(body.limit ?? 100);
+    const limit = Number.isFinite(rawLimit) ? Math.min(Math.max(Math.trunc(rawLimit), 1), 500) : 100;
+    const all = await findPeopleByResearchStatus('NEEDS_RESEARCH', limit);
+    // Same gate enqueue-research.ts uses — skip investors + poor-fit roles
+    // before spending research credits.
+    const eligible = all.filter((person) => researchGate(person).research);
+    for (const person of eligible) {
+      await researchQueue.add('research', { personId: person.id }, { jobId: person.id });
+    }
+    console.log(
+      `[trigger-server] run-pending: ${all.length} NEEDS_RESEARCH, ${eligible.length} enqueued (limit=${limit})`,
+    );
+    json(res, 202, {
+      ok: true,
+      queued: 'research',
+      found: all.length,
+      enqueued: eligible.length,
+      skipped: all.length - eligible.length,
+    });
+    return;
+  }
+
+  // Global: kick off the Stage 1 institution/discovery scan (arXiv + GitHub +
+  // funding). No static jobId on purpose: the discover queue retains completed
+  // jobs for days, so pinning a fixed id would silently block re-running the
+  // scan. The discover worker runs at concurrency 1, so overlapping enqueues
+  // queue up rather than run concurrently.
+  if (url === '/triggers/discovery-scan') {
+    const job = await discoverQueue.add('discover', { source: 'institutions' });
+    console.log(`[trigger-server] enqueued discovery scan job=${job.id}`);
+    json(res, 202, { ok: true, queued: 'discover', source: 'institutions', jobId: job.id });
     return;
   }
 
