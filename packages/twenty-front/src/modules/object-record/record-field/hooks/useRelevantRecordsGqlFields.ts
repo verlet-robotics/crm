@@ -94,15 +94,23 @@ export const useRelevantRecordsGqlFields = ({
     createdAt: true,
     updatedAt: true,
     deletedAt: true,
-    noteTargets: generateActivityTargetGqlFields({
-      activityObjectNameSingular: CoreObjectNameSingular.Note,
-      objectMetadataItems,
-      loadRelations: isObjectAnActivity ? 'relations' : 'activity',
-    }),
-    taskTargets: generateActivityTargetGqlFields({
-      activityObjectNameSingular: CoreObjectNameSingular.Task,
-      objectMetadataItems,
-      loadRelations: isObjectAnActivity ? 'relations' : 'activity',
-    }),
+    // Only Note/Task boards render their own targets in list/board/calendar views.
+    // For every other object these relations were fetched on every card/row but never
+    // displayed — a relation join per record that bloats the payload and backend work.
+    // Visible noteTargets/taskTargets columns still load via the depth-1 path above.
+    ...(isObjectAnActivity
+      ? {
+          noteTargets: generateActivityTargetGqlFields({
+            activityObjectNameSingular: CoreObjectNameSingular.Note,
+            objectMetadataItems,
+            loadRelations: 'relations',
+          }),
+          taskTargets: generateActivityTargetGqlFields({
+            activityObjectNameSingular: CoreObjectNameSingular.Task,
+            objectMetadataItems,
+            loadRelations: 'relations',
+          }),
+        }
+      : {}),
   };
 };
