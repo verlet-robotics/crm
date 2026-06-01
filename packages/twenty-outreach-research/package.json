@@ -10,6 +10,7 @@
   },
   "scripts": {
     "setup:install-fields": "tsx src/setup/install-custom-fields.ts",
+    "setup:install-workflows": "tsx src/setup/install-trigger-workflows.ts",
     "research:synth": "tsx src/research/synthesize-brief.ts",
     "draft:run": "tsx src/draft/run.ts",
     "smoke:client": "tsx src/lib/twenty-client.smoke.ts",
