@@ -29,6 +29,13 @@ const TOKEN = process.env.OUTREACH_TRIGGER_TOKEN;
 // from exhausting memory.
 const MAX_BODY_BYTES = 16 * 1024;
 
+// Debounce window for per-record enqueues: a second click for the same record
+// within this window is dropped, but after it (or once the job finishes) the
+// record can be re-researched. Unlike a permanent jobId, this never blocks a
+// legitimate re-run after a failure. 10 minutes comfortably covers a full
+// research run.
+const DEDUP_TTL_MS = 10 * 60 * 1000;
+
 // Basic UUID shape check — Twenty record ids are v4 UUIDs. Guards against the
 // HTTP action firing with an unrendered template string (e.g. "{{record.id}}").
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
@@ -117,9 +124,14 @@ const handle = async (req: IncomingMessage, res: ServerResponse): Promise<void> 
       json(res, 400, { ok: false, error: 'personId must be a UUID' });
       return;
     }
-    // jobId = personId makes the enqueue idempotent — clicking the button twice
-    // while a job is still queued won't double-research the same person.
-    const job = await researchQueue.add('research', { personId }, { jobId: personId });
+    // Debounce rapid double-clicks (same person within DEDUP_WINDOW) without
+    // permanently blocking re-runs: a deduplication id with a short TTL. After
+    // the window — or once the job finishes — the same person can be re-enqueued.
+    const job = await researchQueue.add(
+      'research',
+      { personId },
+      { deduplication: { id: `person:${personId}`, ttl: DEDUP_TTL_MS } },
+    );
     console.log(`[trigger-server] enqueued research personId=${personId} job=${job.id}`);
     json(res, 202, { ok: true, queued: 'research', personId, jobId: job.id });
     return;
@@ -131,7 +143,11 @@ const handle = async (req: IncomingMessage, res: ServerResponse): Promise<void> 
       json(res, 400, { ok: false, error: 'companyId must be a UUID' });
       return;
     }
-    const job = await companyResearchQueue.add('company', { companyId }, { jobId: companyId });
+    const job = await companyResearchQueue.add(
+      'company',
+      { companyId },
+      { deduplication: { id: `company:${companyId}`, ttl: DEDUP_TTL_MS } },
+    );
     console.log(`[trigger-server] enqueued company companyId=${companyId} job=${job.id}`);
     json(res, 202, { ok: true, queued: 'company', companyId, jobId: job.id });
     return;
@@ -147,7 +163,11 @@ const handle = async (req: IncomingMessage, res: ServerResponse): Promise<void> 
     // before spending research credits.
     const eligible = all.filter((person) => researchGate(person).research);
     for (const person of eligible) {
-      await researchQueue.add('research', { personId: person.id }, { jobId: person.id });
+      await researchQueue.add(
+        'research',
+        { personId: person.id },
+        { deduplication: { id: `person:${person.id}`, ttl: DEDUP_TTL_MS } },
+      );
     }
     console.log(
       `[trigger-server] run-pending: ${all.length} NEEDS_RESEARCH, ${eligible.length} enqueued (limit=${limit})`,
