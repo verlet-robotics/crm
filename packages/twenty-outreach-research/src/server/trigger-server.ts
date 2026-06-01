@@ -15,7 +15,7 @@
 import 'dotenv/config';
 
 import { createServer, type IncomingMessage, type ServerResponse } from 'node:http';
-import { randomUUID } from 'node:crypto';
+import { timingSafeEqual } from 'node:crypto';
 
 import { companyResearchQueue, discoverQueue, researchQueue } from '../queue/queues.js';
 import { findPeopleByResearchStatus } from '../lib/twenty-client.js';
@@ -23,6 +23,11 @@ import { researchGate } from '../qualify/should-research.js';
 
 const PORT = Number(process.env.OUTREACH_TRIGGER_PORT ?? process.env.PORT ?? 8787);
 const TOKEN = process.env.OUTREACH_TRIGGER_TOKEN;
+
+// Cap request bodies. Our payloads are a few dozen bytes ({personId} etc.); a
+// 16KB ceiling leaves generous headroom while preventing an unbounded read
+// from exhausting memory.
+const MAX_BODY_BYTES = 16 * 1024;
 
 // Basic UUID shape check — Twenty record ids are v4 UUIDs. Guards against the
 // HTTP action firing with an unrendered template string (e.g. "{{record.id}}").
@@ -36,7 +41,12 @@ const json = (res: ServerResponse, status: number, body: unknown): void => {
 
 const readJsonBody = async (req: IncomingMessage): Promise<Record<string, unknown>> => {
   const chunks: Buffer[] = [];
-  for await (const chunk of req) chunks.push(chunk as Buffer);
+  let size = 0;
+  for await (const chunk of req) {
+    size += (chunk as Buffer).length;
+    if (size > MAX_BODY_BYTES) throw new Error('body too large');
+    chunks.push(chunk as Buffer);
+  }
   const raw = Buffer.concat(chunks).toString('utf8').trim();
   if (!raw) return {};
   try {
@@ -51,9 +61,12 @@ const isAuthorized = (req: IncomingMessage): boolean => {
   if (!TOKEN) return false;
   const header = req.headers.authorization ?? '';
   const expected = `Bearer ${TOKEN}`;
-  // Length check first so timing-safe compare doesn't throw on mismatched sizes.
-  if (header.length !== expected.length) return false;
-  return header === expected;
+  const headerBuf = Buffer.from(header);
+  const expectedBuf = Buffer.from(expected);
+  // Constant-time compare. timingSafeEqual requires equal-length buffers, so
+  // bail on a length mismatch first — length is not the secret, the token is.
+  if (headerBuf.length !== expectedBuf.length) return false;
+  return timingSafeEqual(headerBuf, expectedBuf);
 };
 
 const server = createServer((req, res) => {
@@ -89,7 +102,11 @@ const handle = async (req: IncomingMessage, res: ServerResponse): Promise<void> 
   let body: Record<string, unknown>;
   try {
     body = await readJsonBody(req);
-  } catch {
+  } catch (err) {
+    if (err instanceof Error && err.message === 'body too large') {
+      json(res, 413, { ok: false, error: 'request body too large' });
+      return;
+    }
     json(res, 400, { ok: false, error: 'invalid JSON body' });
     return;
   }
@@ -167,12 +184,11 @@ if (!TOKEN) {
   process.exit(1);
 }
 
-// Touch randomUUID so the import is used even if not referenced above; keeps a
-// single obvious place to mint correlation ids if we add request tracing later.
-void randomUUID;
-
 server.listen(PORT, () => {
-  console.log(`[trigger-server] listening on :${PORT} (POST /triggers/research-person, /triggers/research-company)`);
+  console.log(
+    `[trigger-server] listening on :${PORT} ` +
+      `(POST /triggers/research-person|research-company|run-pending|discovery-scan)`,
+  );
 });
 
 const shutdown = (signal: string): void => {

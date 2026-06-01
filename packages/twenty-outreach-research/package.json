@@ -50,8 +50,6 @@
     "fast-xml-parser": "^4.5.0",
     "googleapis": "^144.0.0",
     "ioredis": "^5.4.0",
-    "twenty-client-sdk": "workspace:*",
-    "twenty-shared": "workspace:*",
     "zod": "^4.1.11"
   },
   "devDependencies": {
