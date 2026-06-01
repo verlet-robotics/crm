@@ -41,11 +41,10 @@
     "serve": "tsx src/server/serve-all.ts"
   },
   "dependencies": {
-    "@anthropic-ai/sdk": "^0.32.1",
-    "@ai-sdk/anthropic": "^1.0.0",
-    "@ai-sdk/openai": "^1.0.0",
-    "@ai-sdk/openai-compatible": "^0.1.0",
-    "ai": "^4.0.0",
+    "@ai-sdk/anthropic": "^3.0.0",
+    "@ai-sdk/openai": "^3.0.0",
+    "@ai-sdk/openai-compatible": "^2.0.0",
+    "ai": "^6.0.0",
     "bullmq": "^5.13.0",
     "dotenv": "^16.4.5",
     "fast-xml-parser": "^4.5.0",
